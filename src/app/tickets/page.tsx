@@ -138,7 +138,16 @@ function TicketsContent() {
         fetchDropdowns();
         const loadConfig = async () => {
             const { data } = await supabase.from("app_config").select("value").eq("key", "appliance_types").single();
-            if (data?.value) setApplianceTypes(data.value as unknown as { value: string; label: string }[]);
+            if (data?.value) {
+                let parsed = data.value;
+                if (typeof parsed === 'string') {
+                    const strVal = parsed;
+                    try { parsed = JSON.parse(strVal); } catch (e) {}
+                }
+                if (Array.isArray(parsed)) {
+                    setApplianceTypes(parsed as { value: string; label: string }[]);
+                }
+            }
         };
         loadConfig();
         const channel = supabase
@@ -309,7 +318,7 @@ function TicketsContent() {
                                                 <Select value={form.appliance_type} onValueChange={(v) => setForm({ ...form, appliance_type: v })}>
                                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                                     <SelectContent>
-                                                        {applianceTypes.map((a) => (
+                                                        {(Array.isArray(applianceTypes) ? applianceTypes : DEFAULT_APPLIANCE_TYPES).map((a) => (
                                                             <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -519,7 +528,7 @@ function TicketsContent() {
                                                 <span className="font-mono text-sm font-semibold">#{ticket.ticket_number}</span>
                                                 <Badge className={statusColors[ticket.status]}>{ticket.status.replace("_", " ")}</Badge>
                                                 <Badge variant="outline" className={priorityColors[ticket.priority]}>{ticket.priority}</Badge>
-                                                <Badge variant="outline">{applianceTypes.find((a) => a.value === ticket.appliance_type)?.label || ticket.appliance_type}</Badge>
+                                                <Badge variant="outline">{(Array.isArray(applianceTypes) ? applianceTypes : DEFAULT_APPLIANCE_TYPES).find((a) => a.value === ticket.appliance_type)?.label || ticket.appliance_type}</Badge>
                                             </div>
                                             <p className="text-sm mt-2 text-foreground">{ticket.issue_description}</p>
                                             <div className="flex gap-4 mt-2 text-xs text-muted-foreground">

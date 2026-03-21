@@ -266,7 +266,6 @@ function SystemConfigTab() {
     const [categories, setCategories] = useState<string[]>([]);
     const [applianceTypes, setApplianceTypes] = useState<{ value: string; label: string }[]>([]);
     const [newCategory, setNewCategory] = useState("");
-    const [newApplianceValue, setNewApplianceValue] = useState("");
     const [newApplianceLabel, setNewApplianceLabel] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -277,8 +276,26 @@ function SystemConfigTab() {
             if (data) {
                 const catRow = data.find((d: any) => d.key === "expense_categories");
                 const appRow = data.find((d: any) => d.key === "appliance_types");
-                if (catRow) setCategories(catRow.value as unknown as string[]);
-                if (appRow) setApplianceTypes(appRow.value as unknown as { value: string; label: string }[]);
+                
+                if (catRow) {
+                    let parsed = catRow.value;
+                    if (typeof parsed === 'string') {
+                        const strVal = parsed;
+                        try { parsed = JSON.parse(strVal); } 
+                        catch (e) { parsed = strVal.split(',').map((s: string) => s.trim()); }
+                    }
+                    if (Array.isArray(parsed)) setCategories(parsed as string[]);
+                }
+                
+                if (appRow) {
+                    let parsed = appRow.value;
+                    if (typeof parsed === 'string') {
+                        const strVal = parsed;
+                        try { parsed = JSON.parse(strVal); } 
+                        catch (e) {}
+                    }
+                    if (Array.isArray(parsed)) setApplianceTypes(parsed as { value: string; label: string }[]);
+                }
             }
             setLoading(false);
         };
@@ -297,11 +314,10 @@ function SystemConfigTab() {
     };
 
     const addApplianceType = () => {
-        const val = newApplianceValue.trim().toLowerCase().replace(/\s+/g, "_");
         const lbl = newApplianceLabel.trim();
+        const val = lbl.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, '');
         if (!val || !lbl || applianceTypes.some((a) => a.value === val)) return;
         setApplianceTypes([...applianceTypes, { value: val, label: lbl }]);
-        setNewApplianceValue("");
         setNewApplianceLabel("");
     };
 
@@ -333,8 +349,8 @@ function SystemConfigTab() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex flex-wrap gap-2">
-                        {categories.map((cat) => (
-                            <Badge key={cat} variant="secondary" className="gap-1 capitalize pr-1">
+                        {(Array.isArray(categories) ? categories : []).map((cat) => (
+                            <Badge key={String(cat)} variant="secondary" className="gap-1 capitalize pr-1">
                                 {cat}
                                 <button onClick={() => removeCategory(cat)} className="ml-1 rounded-full hover:bg-muted p-0.5">
                                     <X className="h-3 w-3" />
@@ -364,7 +380,7 @@ function SystemConfigTab() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex flex-wrap gap-2">
-                        {applianceTypes.map((a) => (
+                        {(Array.isArray(applianceTypes) ? applianceTypes : []).map((a) => (
                             <Badge key={a.value} variant="secondary" className="gap-1 pr-1">
                                 {a.label}
                                 <button onClick={() => removeApplianceType(a.value)} className="ml-1 rounded-full hover:bg-muted p-0.5">
@@ -378,6 +394,7 @@ function SystemConfigTab() {
                             placeholder="Display label (e.g. Water Heater)"
                             value={newApplianceLabel}
                             onChange={(e) => setNewApplianceLabel(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && addApplianceType()}
                             className="flex-1"
                         />
                         <Button variant="outline" size="sm" onClick={addApplianceType} disabled={!newApplianceLabel.trim()}>

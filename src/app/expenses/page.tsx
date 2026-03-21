@@ -59,7 +59,20 @@ export default function ExpensesPage() {
         fetchExpenses();
         const loadConfig = async () => {
             const { data } = await supabase.from("app_config").select("value").eq("key", "expense_categories").single();
-            if (data?.value) setCategories(data.value as unknown as string[]);
+            if (data?.value) {
+                let parsed = data.value;
+                if (typeof parsed === 'string') {
+                    const stringValue = parsed;
+                    try {
+                        parsed = JSON.parse(stringValue);
+                    } catch (e) {
+                        parsed = stringValue.split(',').map((s: string) => s.trim());
+                    }
+                }
+                if (Array.isArray(parsed)) {
+                    setCategories(parsed as string[]);
+                }
+            }
         };
         loadConfig();
         const channel = supabase
@@ -199,7 +212,7 @@ export default function ExpensesPage() {
                     <Select value={values.category} onValueChange={(v) => onChange({ ...values, category: v })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            {categories.map((c) => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
+                            {(Array.isArray(categories) ? categories : DEFAULT_CATEGORIES).map((c) => <SelectItem key={String(c)} value={String(c)}>{String(c).charAt(0).toUpperCase() + String(c).slice(1)}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
@@ -263,7 +276,7 @@ export default function ExpensesPage() {
                         <SelectTrigger className="w-full lg:w-[160px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Categories</SelectItem>
-                            {categories.map((c) => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
+                            {(Array.isArray(categories) ? categories : DEFAULT_CATEGORIES).map((c) => <SelectItem key={String(c)} value={String(c)}>{String(c).charAt(0).toUpperCase() + String(c).slice(1)}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Button className="w-full lg:w-auto" variant="outline" size="sm" onClick={exportExcel} disabled={filtered.length === 0}>
